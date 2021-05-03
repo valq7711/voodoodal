@@ -6,16 +6,16 @@ from pydal import DAL
 
 _db = DAL()
 
+class sign_created(Table):
+    created = Field(...)
+    created_by = Field(...)
+
+class sign_updated(Table):
+    updated = Field(...)
+    updated_by = Field(...)
+
 @model(_db)
 class db(DB):
-
-    class sign_created(Table):
-        created = Field(...)
-        created_by = Field(...)
-
-    class sign_updated(Table):
-        updated = Field(...)
-        updated_by = Field(...)
 
     @model.db_table
     class person(Table):
