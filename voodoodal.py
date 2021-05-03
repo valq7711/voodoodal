@@ -7,21 +7,6 @@ class DALClasses:
 def patch(Field):
     DALClasses.Field = Field
 
-def table(db, cls = None):
-    if not cls:
-        return lambda cls: table(db, cls)
-    return cls(db, 'Table')
-
-def def_table(db, cls = None):
-    if not cls:
-        return lambda cls: def_table(db, cls)
-    return cls(db, 'define_table')
-
-def make(db, cls):
-    if not cls:
-        return lambda cls: make(db, cls)
-    return cls(db)
-
 class model:
     __current__ = None
     def __new__(cls, db):
