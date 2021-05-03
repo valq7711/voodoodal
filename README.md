@@ -1,5 +1,13 @@
 # voodoodal
 
+## How It Works
+
+At first glance it may seem that I have created derived classes from `dal` and `dal`-objects, but in fact this is a simple python metamagic!  
+You define dummy classes and pass them to decorator that converts class definitions into arguments for `db.define_table()`.  
+Thus, there are no side effects!  
+You end up with pure `db` with pure `tables/fields` and ... IDE-autocomplete!  
+
+
 ```python
 from voodoodal import DB, Table, Field, model
 from pydal import DAL
