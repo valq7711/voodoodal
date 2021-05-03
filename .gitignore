@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.table
+*.db
+.vscode/
 
 # C extensions
 *.so
