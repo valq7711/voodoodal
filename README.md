@@ -4,29 +4,52 @@
 from voodoodal import DB, Table, Field, model
 from pydal import DAL
 
-_db = DAL()
+# create dal-object
+_db = DAL(...)
 
+# setup magic decorator
+model = model(_db)
+
+# if you need signature table(s)
+# instead of:
+#   sign_created =  db.Table(db, 'sign_created', ...)
+# you can just:
 class sign_created(Table):
-    created = Field(...)
-    created_by = Field(...)
+    created = Field('datetime')
+    created_by = Field('reference auth_user')
 
 class sign_updated(Table):
-    updated = Field(...)
-    updated_by = Field(...)
+    updated = Field('datetime')
+    updated_by = Field('reference auth_user')
 
-@model(_db)
+
+# define `some` table at module scope if needed
+@model.db_table
+class some(Table):
+    name = Field()
+
+# already here you can:
+#   _db.commit()
+#   some.insert(name = 'foo')
+
+
+# define all tables under dummy class `db`
+@model
 class db(DB):
 
-    @model.db_table
     class person(Table):
         name = Field('string', required = True)
 
-    @model.db_table
+    # to inject signature(s) just specify them as base class(es)
     class thing(sign_created, sign_updated):
-        owner = Field(_db.person, required = True)
+        owner = Field('reference person', required = True)
         name = Field('string', required = True)
 
-# db is _db == True
+    # if we want `db.some` to be autocomplete (this is optional and doesn't have any effect)
+    some = some
+
+# at this moment all above tables are defined
+# and now  `db` is `_db`, so you can:
 db.commit()
 
 ```

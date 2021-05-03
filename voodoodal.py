@@ -27,6 +27,13 @@ class model:
 
     def __call__(self, cls):
         model.__current__ = None
+        for name, attr in cls.__dict__.items():
+            if not isinstance(attr, type):
+                continue
+
+            new = getattr(attr, '__new__', None)
+            if new and hasattr(new, '__voodoodal__'):
+                attr(self._db, 'define_table')
         return cls(self._db)
 
     @classmethod
@@ -79,6 +86,7 @@ class Table(DalTable):
         tbl = action(*args, **kwargs) or db[tname]
         return tbl
 
+Table.__new__.__voodoodal__ = True
 
 class DB(DAL):
     def __new__(cls, db):
