@@ -101,7 +101,8 @@ db.commit()
 
 ```
 
-
+## Installation using pip (optional)
+```pip install https://github.com/valq7711/voodoodal/archive/main.zip```
 
 
 
