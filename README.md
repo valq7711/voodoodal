@@ -45,16 +45,55 @@ class some(Table):
 @model
 class db(DB):
 
+    ## some useful options are supported:
+    '''
+     __config__ = dict(
+         prefix = 'foo_',  
+         auto_pk = True    
+     )
+    `prefix` - common rname prefix: db.define_table(tname, ..., rname = f'{prefix}{tname}')  
+    `auto_pk` - add `primarykey = ['id']` if there is `id = Field('string')`, 
+                 i.e. Field with name 'id', but with type != 'id'
+    '''             
+    
     class person(Table):
-        name = Field('string', required = True)
+        name = Field(required = True)
+        secret_name = Field()
+        
+        # place any options into __extra__ for postprocessing - see below
+        __extra__ = dict(
+            not_readable = [secret_name]
+        )
+
 
     # to inject signature(s) just specify them as base class(es)
     class thing(sign_created, sign_updated):
         owner = Field('reference person', required = True)
         name = Field('string', required = True)
 
+
     # if we want `db.some` to be autocomplete (this is optional and doesn't have any effect)
     some = some
+
+
+    # postprocessing
+    @model.postproc
+    @classmethod
+    def my_postproc(cls, db, tables_extra):
+        '''
+        `tables_extra` - dict in format {tname: __extra__, ...} i.e.:
+            {
+                'person': {
+                    'not_readable': [secret_name] 
+                }
+            }
+        '''
+        for tname, extra in tables_extra.items():
+            for attr, fld_list in extra.items():
+                for f in fld_list:
+                    _attr = attr.lstrip('not_')
+                    setattr(db[tname][f.name], _attr, attr == _attr)
+   
 
 # at this moment all above tables are defined
 # and now  `db` is `_db`, so you can:
