@@ -70,7 +70,26 @@ class db(DB):
     class thing(sign_created, sign_updated):
         owner = Field('reference person', required = True)
         name = Field('string', required = True)
+        
+        # this will turn into `Field.Virtual`
+        @property
+        def owner_thing_ids(row):
+            return (row.thing.owner, row.thing.id)
+            
+        # this will turn into `Field.Method`
+        def thing_match(row, pattern):
+            import re
+            return re.match(pattern, row.thing.name)
 
+        # this will turn into `db.thing.get_like`-method
+        # usage example: db.thing.get_like('b%') - select all things whose names start with 'b'
+        @classmethod
+        def get_like(self, pattern):
+            # self is db.thing
+            db = self._db
+            return db(self.name.like(pattern)).select()
+
+        
 
     # if we want `db.some` to be autocomplete (this is optional and doesn't have any effect)
     some = some
