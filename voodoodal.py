@@ -4,7 +4,7 @@ from pydal.objects import Table as DalTable
 __author__ = "Valery Kucherov <valq7711@gmail.com>"
 __copyright__ = "Copyright (C) 2021 Valery Kucherov"
 __license__ = "MIT"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 class DALClasses:
     Field = DalField
@@ -88,18 +88,30 @@ class Field(DalField):
 
 class Table(DalTable):
     def __new__(cls, db, action, prefix = None, name = None, auto_pk = None):
+        DalField = DALClasses.Field
         tname = name or cls.__name__
         fields = []
+        table_methods = dict() # https://github.com/web2py/pydal/blob/232e841765ee97ac6f7af45be794d46432085c4d/pydal/objects.py#L340
         kwargs = dict()
         need_pk = False
         for name, attr in cls.__dict__.items():
             if name.startswith('__'):
                 continue
-            if isinstance(attr, Field):
+            # Field.Virtual
+            if isinstance(attr, property):
+                fields.append(DalField.Virtual(name, attr.fget))
+            # table method
+            elif isinstance(attr, classmethod):
+                table_methods[name] = attr.__func__
+            # just Field
+            elif isinstance(attr, Field):
                 attr.name = name
                 if not need_pk and auto_pk and name == 'id' and attr.args and attr.args[0] != 'id':
                     need_pk = True
-                fields.append(DALClasses.Field(name, *attr.args, **attr.kwargs))
+                fields.append(DalField(name, *attr.args, **attr.kwargs))
+            # Field.Method
+            elif callable(attr):
+                fields.append(DalField.Method(name, attr))
             else:
                 kwargs[name] = attr
         for sign in cls.__bases__:
@@ -115,6 +127,8 @@ class Table(DalTable):
         if prefix:
             kwargs['rname'] = f"{prefix}{tname}"
         tbl = action(*args, **kwargs) or db[tname]
+        for meth_name, meth in table_methods.items():
+            tbl.add_method.register(meth_name)(meth)
         return tbl
 
 Table.__new__.__voodoodal__ = True
