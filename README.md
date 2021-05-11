@@ -18,10 +18,12 @@ _db = DAL(...)
 # setup magic decorator
 model = model(_db)
 
+
 # if you need signature table(s)
 # instead of:
 #   sign_created =  db.Table(db, 'sign_created', ...)
 # you can just:
+
 class sign_created(Table):
     created = Field('datetime')
     created_by = Field('reference auth_user')
@@ -46,19 +48,40 @@ class some(Table):
 class db(DB):
 
     ## some useful options are supported:
-    '''
+    """
      __config__ = dict(
          prefix = 'foo_',  
          auto_pk = True    
      )
-    `prefix` - common rname prefix: db.define_table(tname, ..., rname = f'{prefix}{tname}')  
-    `auto_pk` - add `primarykey = ['id']` if there is `id = Field('string')`, 
+          
+     Description
+     -----------
+        prefix:  common rname prefix - db.define_table(tname, ..., rname = f'{prefix}{tname}')  
+        auto_pk: add `primarykey = ['id']` if there is `id = Field('string')`, 
                  i.e. Field with name 'id', but with type != 'id'
-    '''             
+    """             
+    
+    def on_action(table, phase_action, *args):
+        """
+        This is common hook, may be used for logging, 
+        will be passed to all tables using db.table._<phase>_<action>.append()
+        
+        Params
+        -------
+            table: table-object
+            phase_action: ['before_insert',  'after_insert', ..., 'after_delete']
+            *args: hook args
+        """   
+        pass
     
     class person(Table):
+    
         name = Field(required = True)
         secret_name = Field()
+        
+        def before_insert(ins_args):
+            # will be passed to db.person._before_insert.append(...)
+            pass
         
         # place any options into __extra__ for postprocessing - see below
         __extra__ = dict(
@@ -66,32 +89,41 @@ class db(DB):
         )
 
 
-    # to inject signature(s) just specify them as base class(es)
     class thing(sign_created, sign_updated):
+        # to inject signature(s) just specify them as base class(es)
+        
         owner = Field('reference person', required = True)
         name = Field('string', required = True)
-        
-        # this will turn into `Field.Virtual`
+                
         @property
         def owner_thing_ids(row):
+            # This will turn into `Field.Virtual`
             return (row.thing.owner, row.thing.id)
-            
-        # this will turn into `Field.Method`
+        
         def thing_match(row, pattern):
+            # This will turn into `Field.Method`
             import re
             return re.match(pattern, row.thing.name)
 
-        # this will turn into `db.thing.get_like`-method
-        # usage example: db.thing.get_like('b%') - select all things whose names start with 'b'
         @classmethod
         def get_like(self, pattern):
-            # self is db.thing
+            """
+            This will turn into `db.thing.get_like`-method
+            
+            Params
+            -------
+                self: is db.thing
+                
+            Example 
+            --------
+                db.thing.get_like('b%')  # select all things whose names start with 'b'
+            """
+            
             db = self._db
             return db(self.name.like(pattern)).select()
-
         
 
-    # if we want `db.some` to be autocomplete (this is optional and doesn't have any effect)
+    # if we want `db.some` to be autocomplete as well (this is optional, only for IDE-effect)
     some = some
 
 
@@ -99,14 +131,13 @@ class db(DB):
     @model.postproc
     @classmethod
     def my_postproc(cls, db, tables_extra):
-        '''
-        `tables_extra` - dict in format {tname: __extra__, ...} i.e.:
-            {
-                'person': {
-                    'not_readable': [secret_name] 
-                }
-            }
-        '''
+        """
+        Params
+        -------
+            tables_extra: dict in format {tname: __extra__, ...}
+                in this particular case it is - {'person': { 'not_readable': [secret_name] } }
+        """
+        
         for tname, extra in tables_extra.items():
             for attr, fld_list in extra.items():
                 for f in fld_list:
