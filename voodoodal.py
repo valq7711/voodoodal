@@ -4,13 +4,8 @@ from pydal.objects import Table as DalTable
 __author__ = "Valery Kucherov <valq7711@gmail.com>"
 __copyright__ = "Copyright (C) 2021 Valery Kucherov"
 __license__ = "MIT"
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
-class DALClasses:
-    Field = DalField
-
-def patch(Field):
-    DALClasses.Field = Field
 
 class model:
     __current__ = None
@@ -38,13 +33,22 @@ class model:
         config = getattr(cls, '__config__', {})
         prefix = config.get('prefix')
         auto_pk = config.get('auto_pk')
+        common_hook = getattr(cls, 'on_action', None)
         tables_extra = dict()
         for name, attr in cls.__dict__.items():
             if not isinstance(attr, type):
                 continue
             new = getattr(attr, '__new__', None)
             if new and hasattr(new, '__voodoodal__'):
-                attr(self._db, 'define_table', prefix = prefix, name = name, auto_pk = auto_pk)
+                # attr is voodoodal.Table class
+                attr(
+                    self._db,
+                    'define_table',
+                    prefix = prefix,
+                    name = name,
+                    auto_pk = auto_pk,
+                    common_hook = common_hook
+                )
                 extra = getattr(attr, '__extra__', None)
                 if extra:
                     tables_extra[name] = extra
@@ -86,19 +90,34 @@ class Field(DalField):
         self.kwargs = kwargs
 
 
+HOOKS = {f"{phase}_{action}" for phase in ('before', 'after') for action in ('insert', 'update', 'delete')}
+
+
 class Table(DalTable):
-    def __new__(cls, db, action, prefix = None, name = None, auto_pk = None):
-        DalField = DALClasses.Field
+    def __new__(
+        cls,
+        db,
+        action,  # 'define_table' or 'Table'
+        prefix = None,
+        name = None,
+        auto_pk = None,
+        common_hook = None,
+    ):
         tname = name or cls.__name__
-        fields = []
-        table_methods = dict() # https://github.com/web2py/pydal/blob/232e841765ee97ac6f7af45be794d46432085c4d/pydal/objects.py#L340
+        fields = list()
+        hooks = dict()
+        table_methods = dict()  # https://github.com/web2py/pydal/blob/232e841765ee97ac6f7af45be794d46432085c4d/pydal/objects.py#L340
         kwargs = dict()
         need_pk = False
         for name, attr in cls.__dict__.items():
             if name.startswith('__'):
                 continue
+
+            # hooks
+            if name in HOOKS:
+                hooks[name] = attr
             # Field.Virtual
-            if isinstance(attr, property):
+            elif isinstance(attr, property):
                 fields.append(DalField.Virtual(name, attr.fget))
             # table method
             elif isinstance(attr, classmethod):
@@ -122,11 +141,25 @@ class Table(DalTable):
             args.insert(0, db)
         action = getattr(db, action)
 
+        # auto_pk
         if need_pk and kwargs.get('primarykey') is None:
             kwargs['primarykey'] = ['id']
+        # rname prefix
         if prefix:
             kwargs['rname'] = f"{prefix}{tname}"
+
+        # define table
         tbl = action(*args, **kwargs) or db[tname]
+
+        # set hooks
+        for hook_name, hook in hooks.items():
+            tbl[f"_{hook_name}"].append(hook)
+        if common_hook:
+            for hook_name in HOOKS:
+                tbl[f"_{hook_name}"].append(
+                    lambda *args, hook_name = hook_name, **kw: common_hook(tbl, hook_name, *args, **kw)
+                )
+        # set table methods
         for meth_name, meth in table_methods.items():
             tbl.add_method.register(meth_name)(meth)
         return tbl
