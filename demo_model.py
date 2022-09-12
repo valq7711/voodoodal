@@ -1,18 +1,3 @@
-# voodoodal
-
-## How It Works
-
-At first glance it may seem that I have created derived classes from `dal` and `dal`-objects, but in fact this is a simple python metamagic!
-You define dummy classes and pass them to decorator that converts class definitions into arguments for `db.define_table()`.
-Thus, there are no side effects!
-You end up with pure `db` with pure `tables/fields` and ... IDE-autocomplete!
-
-Lets define model in `demo_model.py`
-
-```python
-
-# demo_model.py
-
 from voodoodal import Table, Field
 from pydal import DAL
 import datetime
@@ -78,7 +63,7 @@ class Model(DAL):
             assert self is db.thing
             return db(self.name.like(patt)).select()
 
-        # hooks goes as is
+        # hooks go as is
 
         def before_insert(args):
             print('before_insert', args)
@@ -110,65 +95,3 @@ class Model(DAL):
     def on_define_model(cls, db: DAL, extras: dict):
         """Postprocessing hook."""
         print('on_define_model', db, extras)
-
-```
-
-Now let's actually create the tables in the db
-
-```python
-
-# demo_test.py
-
-from voodoodal import ModelBuilder
-from pydal import DAL
-import os
-
-from demo_model import Model
-
-
-_db = DAL(
-    folder=f'{os.path.dirname(__file__)}/db_test'
-)
-
-
-# All magic goes here
-@ModelBuilder(_db)
-class db(Model):
-    pass
-
-
-assert db is _db
-db.commit()
-
-# check signatures
-assert {db.thing.created, db.thing.created_by, db.thing.updated, db.thing.updated_by}.issubset({*db.thing})
-
-# check rname prefix
-assert all(t._rname == f'test_{t._tablename}' for t in db)
-
-# check auto_pk
-assert db.color._primarykey == ['id']
-
-
-john = db.person.insert(name='John')
-db.thing.insert(owner=john, name='ball')
-assert db.thing.get_like('ball%')[0].name == 'ball'
-db.thing(1).update_record(name='big ball')
-row: Model.thing = db(db.thing).select().first()
-
-assert row.owner_thing_name == [row.owner, row.name]
-assert row.owner_id == row.owner
-assert row.owner_name_meth() == [row.owner, row.name]
-assert db.thing.get_like('big%')[0].name == 'big ball'
-
-```
-
-## Installation using pip (optional)
-```pip install voodoodal```
-
-
-
-
-
-
-
