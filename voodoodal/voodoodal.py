@@ -77,10 +77,31 @@ def get_signature(db, cls):
     return tbl
 
 
+class DBValidatorWrapper:
+    def __init__(self, fun):
+        self.fun = fun
+
+    def resolve(self, db):
+        return self.fun(db)
+
+
 class Field(DalField):
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+
+    def resolve_validators(self, db):
+        requires = self.kwargs.pop('requires', None)
+        if requires is None:
+            return
+        if not isinstance(requires, (list, tuple)):
+            requires = [requires]
+        else:
+            requires = [*requires]
+        for i, r in enumerate(requires):
+            if isinstance(r, DBValidatorWrapper):
+                requires[i] = r.resolve(db)
+        self.kwargs['requires'] = requires
 
 
 class Index:
@@ -150,6 +171,7 @@ class Table(DalTable, Row):
                     table_methods[name] = attr.__func__
             # just Field
             elif isinstance(attr, Field):
+                attr.resolve_validators(db)
                 attr.name = name
                 has_field_id_name = has_field_id_name or name == 'id'
                 has_field_id_type = (

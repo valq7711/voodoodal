@@ -6,7 +6,7 @@ from demo_model import Model
 
 
 _db = DAL(
-    folder=f'{os.path.dirname(__file__)}/db_test'
+    folder=os.path.join(os.path.dirname(__file__), 'db_test')
 )
 
 
@@ -38,3 +38,11 @@ assert row.owner_thing_name == [row.owner, row.name]
 assert row.owner_id == row.owner
 assert row.owner_name_meth() == [row.owner, row.name]
 assert db.thing.get_like('big%')[0].name == 'big ball'
+
+# validator
+val, error = db.person.name.validate('John')
+assert error
+print(error)
+
+val, error = db.person.name.validate('Val')
+assert error is None

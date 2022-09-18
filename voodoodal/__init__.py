@@ -1,4 +1,4 @@
-from .voodoodal import ModelBuilder, DB, Table, Field, Index
+from .voodoodal import ModelBuilder, DB, Table, Field, Index, DBValidatorWrapper
 
 __all__ = (
     'ModelBuilder',
@@ -6,6 +6,7 @@ __all__ = (
     'Table',
     'Field',
     'Index',
+    'DBValidatorWrapper',
 )
 
 __author__ = "Valery Kucherov <valq7711@gmail.com>"

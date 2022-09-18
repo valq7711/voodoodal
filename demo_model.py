@@ -1,4 +1,5 @@
 from voodoodal import Table, Field
+from voodoodal.pydal_db_validators import is_not_in_db
 from pydal import DAL
 import datetime
 
@@ -27,7 +28,7 @@ class Model(DAL):
     }
 
     class person(Table):
-        name = Field('string', required=True)
+        name = Field('string', required=True, requires=[is_not_in_db('person.name')])
 
     class color(Table):
         id = Field('integer')
@@ -72,7 +73,7 @@ class Model(DAL):
             print('before_update', s, args)
 
         def after_update(s, args):
-            print('after_insert', s, args)
+            print('after_update', s, args)
 
         @classmethod
         def _on_define(cls, t: Table):
